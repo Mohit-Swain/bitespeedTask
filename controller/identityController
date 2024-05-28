@@ -1,0 +1,141 @@
+const contactModel = require('../models/contactModel');
+
+function findParentId(id, idToContactMapping) {
+    const contact = idToContactMapping[id];
+    if (contact.linkPrecendence === "primary") {
+        return id;
+    }
+    return findParentId(contact.linkedId, idToContactMapping);
+}
+
+function findPrimaryContactIdOfEmail(email, allContacts, idToContactMapping) {
+    if (!email) {
+        return null;
+    }
+    const activeContactsWithSameEmail = allContacts
+        .filter(contact => !contact.deletedAt)
+        .filter(contact => contact.email === email);
+    if (activeContactsWithSameEmail.length === 0) {
+        return null;
+    }
+    return findParentId(activeContactsWithSameEmail[0].id, idToContactMapping);
+}
+
+function findPrimaryContactIdOfPhoneNumber(phoneNumber, allContacts, idToContactMapping) {
+    if (!phoneNumber) {
+        return null;
+    }
+    const activeContactsWithSamePhoneNumber = allContacts
+        .filter(contact => !contact.deletedAt)
+        .filter(contact => contact.phoneNumber === phoneNumber);
+
+    if (activeContactsWithSamePhoneNumber.length === 0) {
+        return null;
+    }
+    return findParentId(activeContactsWithSamePhoneNumber[0].id, idToContactMapping);
+}
+
+
+function findContactsWithPrimaryContactId(primaryContactId, allContacts, idToContactMapping) {
+    const sameContacts = allContacts.filter(contact => findParentId(contact.id, idToContactMapping) === primaryContactId);
+
+    // can do path compression here
+    return sameContacts;
+}
+
+function insertNewItem(email, phoneNumber, linkedId, allContacts, idToContactMapping) {
+    const timeNow = Date.now();
+    const id = allContacts.length + 1;
+
+    let contact = {
+        id: id,
+        email: email,
+        phoneNumber: phoneNumber,
+        linkedId: linkedId,
+        linkPrecendence: (linkedId ? "secondary" : "primary"),
+        createdAt: timeNow,
+        updatedAt: timeNow
+    };
+
+    allContacts.push(contact);
+    idToContactMapping[contact.id] = contact;
+    console.log(contact);
+
+    return contact;
+};
+
+exports.postIdentity = function (req, res, next) {
+    let { email, phoneNumber } = req.body;
+    console.log(req.body);
+    // validate
+    if (!email && !phoneNumber) {
+        return res.status(400).json({
+            "error": "at least email or phoneNumber required"
+        });
+    }
+
+    let allContacts = contactModel.allActiveContacts();
+
+    let idToContactMapping = {};
+
+    allContacts.forEach(contact => {
+        idToContactMapping[contact.id] = contact;
+    });
+
+
+
+    const emailPrimaryId = findPrimaryContactIdOfEmail(email, allContacts, idToContactMapping);
+    const phoneNumberPrimaryId = findPrimaryContactIdOfPhoneNumber(phoneNumber, allContacts, idToContactMapping);
+
+    let finalPrimaryContactId;
+
+    if (!emailPrimaryId && !phoneNumberPrimaryId) {
+        // create a primary contact
+        finalPrimaryContactId = insertNewItem(email, phoneNumber, null, allContacts, idToContactMapping).id;
+    }
+    else if (emailPrimaryId && !phoneNumberPrimaryId) {
+        insertNewItem(email, phoneNumber, emailPrimaryId, allContacts, idToContactMapping);
+        finalPrimaryContactId = emailPrimaryId;
+    }
+    else if (!emailPrimaryId && phoneNumberPrimaryId) {
+        insertNewItem(email, phoneNumber, phoneNumberPrimaryId, allContacts, idToContactMapping);
+        finalPrimaryContactId = phoneNumberPrimaryId;
+    }
+    else { // both email and phone number's primaryId present
+
+        // make emailPrimaryId as the primary key of phonePrimaryKey
+        if (emailPrimaryId !== phoneNumberPrimaryId) {
+            idToContactMapping[phoneNumberPrimaryId].linkedId = emailPrimaryId;
+            idToContactMapping[phoneNumberPrimaryId].linkPrecendence = "secondary";
+        }
+
+        // insert the new item with primary contact as emailPrimaryKeyId
+        insertNewItem(email, phoneNumber, emailPrimaryId, allContacts, idToContactMapping);
+        finalPrimaryContactId = emailPrimaryId;
+    }
+
+    const sameContacts = findContactsWithPrimaryContactId(finalPrimaryContactId, allContacts, idToContactMapping);
+
+
+    const sameContactsEmail = sameContacts
+        .filter(contact => contact.email)
+        .map(contact => contact.email);
+
+    const sameContactsPhoneNumber = sameContacts
+        .filter(contact => contact.phoneNumber)
+        .map(contact => contact.phoneNumber);
+
+    const secondaryContactIds = sameContacts
+        .filter(contact => contact.linkPrecendence === "secondary")
+        .map(contact => contact.id);
+
+    contactModel.setContacts(allContacts);
+    res.json({
+        "contacts": {
+            "primaryContactId": finalPrimaryContactId,
+            "emails": sameContactsEmail,
+            "phoneNumbers": sameContactsPhoneNumber,
+            "secondaryContactIds": secondaryContactIds
+        }
+    });
+};
