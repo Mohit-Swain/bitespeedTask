@@ -6,7 +6,7 @@ can take 50 secs to boot up on first try!
 
 -   `POST` at `/identity` -> adds contact as per the description
 -   `GET` at `/identity` -> returns the current state of DB
--   `DELETE` at `/identity` -> deletes all contacts
+-   `DELETE` at `/identity` -> deletes all contacts from DB
 
 ---
 

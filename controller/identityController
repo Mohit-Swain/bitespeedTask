@@ -52,7 +52,7 @@ function findContactsWithPrimaryContactId(primaryContactId, allContacts, idToCon
 
 // inserts an item in cache
 function insertNewItem(email, phoneNumber, linkedId, allContacts, idToContactMapping) {
-    const timeNow = Date.now();
+    const dateNow = new Date();
     const id = allContacts.length + 1;
 
     let contact = {
@@ -61,8 +61,8 @@ function insertNewItem(email, phoneNumber, linkedId, allContacts, idToContactMap
         phoneNumber: phoneNumber,
         linkedId: linkedId,
         linkPrecendence: (linkedId ? "secondary" : "primary"),
-        createdAt: timeNow,
-        updatedAt: timeNow,
+        createdAt: dateNow,
+        updatedAt: dateNow,
         deletedAt: null
     };
 
