@@ -103,15 +103,29 @@ exports.postIdentity = function (req, res, next) {
     }
     else { // both email and phone number's primaryId present
 
-        // make emailPrimaryId as the primary key of phonePrimaryKey
+        // oldest one will be treated as primary
         if (emailPrimaryId !== phoneNumberPrimaryId) {
-            idToContactMapping[phoneNumberPrimaryId].linkedId = emailPrimaryId;
-            idToContactMapping[phoneNumberPrimaryId].linkPrecendence = "secondary";
+            const creationTimeOfPhoneNumber = idToContactMapping[phoneNumberPrimaryId].createdAt;
+            const creationTimeOfEmail = idToContactMapping[emailPrimaryId].createdAt;
+
+            if (creationTimeOfEmail < creationTimeOfPhoneNumber) {
+                idToContactMapping[phoneNumberPrimaryId].linkedId = emailPrimaryId;
+                idToContactMapping[phoneNumberPrimaryId].linkPrecendence = "secondary";
+
+                // insert the new item with primary contact as emailPrimaryKeyId
+                insertNewItem(email, phoneNumber, emailPrimaryId, allContacts, idToContactMapping);
+                finalPrimaryContactId = emailPrimaryId;
+            } else {
+                idToContactMapping[emailPrimaryId].linkedId = phoneNumberPrimaryId;
+                idToContactMapping[emailPrimaryId].linkPrecendence = "secondary";
+
+                // insert the new item with primary contact as emailPrimaryKeyId
+                insertNewItem(email, phoneNumber, phoneNumberPrimaryId, allContacts, idToContactMapping);
+                finalPrimaryContactId = phoneNumberPrimaryId;
+            }
         }
 
-        // insert the new item with primary contact as emailPrimaryKeyId
-        insertNewItem(email, phoneNumber, emailPrimaryId, allContacts, idToContactMapping);
-        finalPrimaryContactId = emailPrimaryId;
+
     }
 
     const sameContacts = findContactsWithPrimaryContactId(finalPrimaryContactId, allContacts, idToContactMapping);
