@@ -12,7 +12,7 @@ router.get('/identity', identityContorller.getIdentity);
 router.delete('/identity', identityContorller.deleteIdentity);
 
 router.get('/', function (req, res, next) {
-  res.send('ok, You can GET, POST and delete on \'/identity\' endpoint ');
+  res.send('You can GET, POST and delete on \'/identity\' endpoint ');
 });
 
 module.exports = router;

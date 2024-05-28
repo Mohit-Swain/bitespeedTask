@@ -62,7 +62,8 @@ function insertNewItem(email, phoneNumber, linkedId, allContacts, idToContactMap
         linkedId: linkedId,
         linkPrecendence: (linkedId ? "secondary" : "primary"),
         createdAt: timeNow,
-        updatedAt: timeNow
+        updatedAt: timeNow,
+        deletedAt: null
     };
 
     allContacts.push(contact);
