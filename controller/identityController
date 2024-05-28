@@ -39,7 +39,6 @@ function findPrimaryContactIdOfPhoneNumber(phoneNumber, allContacts, idToContact
 function findContactsWithPrimaryContactId(primaryContactId, allContacts, idToContactMapping) {
     const sameContacts = allContacts.filter(contact => findParentId(contact.id, idToContactMapping) === primaryContactId);
 
-    // assuming the oldest contact is primary key, we will return primary key first 
     const linkPrecendenceOrder = ["primary", "secondary"];
     sameContacts.sort((a, b) => linkPrecendenceOrder.indexOf(a.linkPrecendence) - linkPrecendenceOrder.indexOf(b.linkPrecendence));
 
@@ -48,10 +47,10 @@ function findContactsWithPrimaryContactId(primaryContactId, allContacts, idToCon
         throw "oldest contact is not primary contact";
     }
 
-    // can do path compression here
     return sameContacts;
 }
 
+// inserts an item in cache
 function insertNewItem(email, phoneNumber, linkedId, allContacts, idToContactMapping) {
     const timeNow = Date.now();
     const id = allContacts.length + 1;
@@ -74,9 +73,15 @@ function insertNewItem(email, phoneNumber, linkedId, allContacts, idToContactMap
 
 exports.postIdentity = function (req, res, next) {
     let { email, phoneNumber } = req.body;
-    validateInput(email, phoneNumber);
+    const validationError = validateInput(email, phoneNumber);
+    if (validationError) {
+        return res.status(400)
+            .json({
+                "error": validationError
+            });
+    }
 
-    let allContacts = contactModel.allActiveContacts();
+    let allContacts = contactModel.getAllContacts();
 
     let idToContactMapping = {};
 
@@ -96,11 +101,15 @@ exports.postIdentity = function (req, res, next) {
         finalPrimaryContactId = insertNewItem(email, phoneNumber, null, allContacts, idToContactMapping).id;
     }
     else if (emailPrimaryId && !phoneNumberPrimaryId) {
-        insertNewItem(email, phoneNumber, emailPrimaryId, allContacts, idToContactMapping);
+        if (phoneNumber) { // only insert for new phone number
+            insertNewItem(email, phoneNumber, emailPrimaryId, allContacts, idToContactMapping);
+        }
         finalPrimaryContactId = emailPrimaryId;
     }
     else if (!emailPrimaryId && phoneNumberPrimaryId) {
-        insertNewItem(email, phoneNumber, phoneNumberPrimaryId, allContacts, idToContactMapping);
+        if (email) {
+            insertNewItem(email, phoneNumber, phoneNumberPrimaryId, allContacts, idToContactMapping);
+        }
         finalPrimaryContactId = phoneNumberPrimaryId;
     }
     else { // both email and phone number's primaryId present
@@ -157,24 +166,18 @@ exports.postIdentity = function (req, res, next) {
 function validateInput(email, phoneNumber) {
     // validate
     if (!email && !phoneNumber) {
-        return res.status(400).json({
-            "error": "at least email or phoneNumber required"
-        });
+        return "at least email or phoneNumber required";
     }
 
     if (email) {
         if (typeof email != "string") {
-            return res.status(400).json({
-                "error": "email should be of type string"
-            });
+            return "email should be of type string";
         }
     }
 
     if (phoneNumber) {
         if (typeof phoneNumber != "string") {
-            return res.status(400).json({
-                "error": "email should be of type string"
-            });
+            return "email should be of type string";
         }
     }
 }
