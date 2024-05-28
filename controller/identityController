@@ -163,6 +163,20 @@ exports.postIdentity = function (req, res, next) {
     });
 };
 
+exports.getIdentity = function (req, res, next) {
+    return res.json({
+        "contacts": contactModel.getAllContacts()
+    });
+
+};
+
+exports.deleteIdentity = function (req, res, next) {
+    contactModel.setContacts([]);
+    return res.json({
+        "message": "deleted all contacts, successfully"
+    });
+};
+
 function validateInput(email, phoneNumber) {
     // validate
     if (!email && !phoneNumber) {

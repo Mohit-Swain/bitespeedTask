@@ -7,6 +7,10 @@ const identityContorller = require('../controller/identityController');
 /* GET home page. */
 router.post('/identity', identityContorller.postIdentity);
 
+router.get('/identity', identityContorller.getIdentity);
+
+router.delete('/identity', identityContorller.deleteIdentity);
+
 router.get('/', function (req, res, next) {
   res.send('ok');
 });
