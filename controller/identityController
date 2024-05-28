@@ -74,12 +74,7 @@ function insertNewItem(email, phoneNumber, linkedId, allContacts, idToContactMap
 
 exports.postIdentity = function (req, res, next) {
     let { email, phoneNumber } = req.body;
-    // validate
-    if (!email && !phoneNumber) {
-        return res.status(400).json({
-            "error": "at least email or phoneNumber required"
-        });
-    }
+    validateInput(email, phoneNumber);
 
     let allContacts = contactModel.allActiveContacts();
 
@@ -94,7 +89,7 @@ exports.postIdentity = function (req, res, next) {
     const emailPrimaryId = findPrimaryContactIdOfEmail(email, allContacts, idToContactMapping);
     const phoneNumberPrimaryId = findPrimaryContactIdOfPhoneNumber(phoneNumber, allContacts, idToContactMapping);
 
-    let finalPrimaryContactId;
+    let finalPrimaryContactId = null;
 
     if (!emailPrimaryId && !phoneNumberPrimaryId) {
         // create a primary contact
@@ -128,9 +123,9 @@ exports.postIdentity = function (req, res, next) {
                 // insert the new item with primary contact as emailPrimaryKeyId
                 finalPrimaryContactId = phoneNumberPrimaryId;
             }
+        } else {
+            finalPrimaryContactId = emailPrimaryId;
         }
-
-
     }
 
     const sameContacts = findContactsWithPrimaryContactId(finalPrimaryContactId, allContacts, idToContactMapping);
@@ -158,3 +153,28 @@ exports.postIdentity = function (req, res, next) {
         }
     });
 };
+
+function validateInput(email, phoneNumber) {
+    // validate
+    if (!email && !phoneNumber) {
+        return res.status(400).json({
+            "error": "at least email or phoneNumber required"
+        });
+    }
+
+    if (email) {
+        if (typeof email != "string") {
+            return res.status(400).json({
+                "error": "email should be of type string"
+            });
+        }
+    }
+
+    if (phoneNumber) {
+        if (typeof phoneNumber != "string") {
+            return res.status(400).json({
+                "error": "email should be of type string"
+            });
+        }
+    }
+}
