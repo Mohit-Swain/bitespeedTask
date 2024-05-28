@@ -39,6 +39,15 @@ function findPrimaryContactIdOfPhoneNumber(phoneNumber, allContacts, idToContact
 function findContactsWithPrimaryContactId(primaryContactId, allContacts, idToContactMapping) {
     const sameContacts = allContacts.filter(contact => findParentId(contact.id, idToContactMapping) === primaryContactId);
 
+    // assuming the oldest contact is primary key, we will return primary key first 
+    const linkPrecendenceOrder = ["primary", "secondary"];
+    sameContacts.sort((a, b) => linkPrecendenceOrder.indexOf(a.linkPrecendence) - linkPrecendenceOrder.indexOf(b.linkPrecendence));
+
+    // check first contact is primary key
+    if (sameContacts[0].linkPrecendence !== "primary") {
+        throw "oldest contact is not primary contact";
+    }
+
     // can do path compression here
     return sameContacts;
 }
@@ -59,14 +68,12 @@ function insertNewItem(email, phoneNumber, linkedId, allContacts, idToContactMap
 
     allContacts.push(contact);
     idToContactMapping[contact.id] = contact;
-    console.log(contact);
-
+    // add debug
     return contact;
 };
 
 exports.postIdentity = function (req, res, next) {
     let { email, phoneNumber } = req.body;
-    console.log(req.body);
     // validate
     if (!email && !phoneNumber) {
         return res.status(400).json({
@@ -113,14 +120,12 @@ exports.postIdentity = function (req, res, next) {
                 idToContactMapping[phoneNumberPrimaryId].linkPrecendence = "secondary";
 
                 // insert the new item with primary contact as emailPrimaryKeyId
-                insertNewItem(email, phoneNumber, emailPrimaryId, allContacts, idToContactMapping);
                 finalPrimaryContactId = emailPrimaryId;
             } else {
                 idToContactMapping[emailPrimaryId].linkedId = phoneNumberPrimaryId;
                 idToContactMapping[emailPrimaryId].linkPrecendence = "secondary";
 
                 // insert the new item with primary contact as emailPrimaryKeyId
-                insertNewItem(email, phoneNumber, phoneNumberPrimaryId, allContacts, idToContactMapping);
                 finalPrimaryContactId = phoneNumberPrimaryId;
             }
         }
